@@ -80,15 +80,18 @@ class InputState:
     def __init__(self):
         self.jump_held: bool = False
         self.fire_held: bool = False
+        self.pause_held: bool = False
         self.update()
     
     def update(self):
         self.jump_pressed = not self.jump_held and keyboard.up
         self.fire_pressed = not self.fire_held and keyboard.space
+        self.pause_pressed = not self.pause_held and keyboard.p
         self.left = keyboard.left
         self.right = keyboard.right
         self.jump_held = keyboard.up
         self.fire_held = keyboard.space
+        self.pause_held = keyboard.p
 
 class CollideActor(Actor):
     def __init__(self, pos, anchor=ANCHOR_CENTRE):
@@ -748,17 +751,24 @@ class PlayScreen(Screen):
     def __init__(self, app):
         super().__init__(app)
         self.app.set_game(Game(Player()))
+        self.paused = False
 
     def update(self, input_state: InputState):
-        super().update(input_state)
+        if input_state.pause_pressed:
+            self.paused = not self.paused
 
-        if self.app.get_game().player.lives < 0:
-            self.app.get_game().play_sound("over")
-            self.app.change_screen(GameOverScreen)
+        if not self.paused:
+            super().update(input_state)
+
+            if self.app.get_game().player.lives < 0:
+                self.app.get_game().play_sound("over")
+                self.app.change_screen(GameOverScreen)
 
     def draw(self):
         super().draw()
         draw_status()
+        if self.paused:
+            draw_text("PAUSED", HEIGHT // 2)
 
 class GameOverScreen(Screen):
     def __init__(self, app):
