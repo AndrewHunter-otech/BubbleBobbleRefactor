@@ -705,6 +705,7 @@ def space_pressed():
         space_down = False
         return False
 
+
 # Pygame Zero calls the update and draw functions each frame
 
 class State(Enum):
@@ -713,34 +714,31 @@ class State(Enum):
     GAME_OVER = 3
 
 
-def update():
-    global state, game
+class Screen:
+    def __init__(self, app):
+        self.app: App = app
 
-    if state == State.MENU:
+    def update(self):
+        self.app.get_game().update()
+
+    def draw(self):
+        self.app.get_game().draw()
+
+class MenuScreen(Screen):
+    def __init__(self, app):
+        super().__init__(app)
+        self.app.set_game(Game())
+
+    def update(self):
+        super().update()
+
         if space_pressed():
             # Switch to play state, and create a new Game object, passing it a new Player object to use
-            state = State.PLAY
-            game = Game(Player())
-        else:
-            game.update()
+            self.app.change_screen(PlayScreen)
+    
+    def draw(self):
+        super().draw()
 
-    elif state == State.PLAY:
-        if game.player.lives < 0:
-            game.play_sound("over")
-            state = State.GAME_OVER
-        else:
-            game.update()
-
-    elif state == State.GAME_OVER:
-        if space_pressed():
-            # Switch to menu state, and create a new game object without a player
-            state = State.MENU
-            game = Game()
-
-def draw():
-    game.draw()
-
-    if state == State.MENU:
         # Draw title screen
         screen.blit("title", (0, 0))
 
@@ -753,13 +751,71 @@ def draw():
         anim_frame = min(((game.timer + 40) % 160) // 4, 9)
         screen.blit("space" + str(anim_frame), (130, 280))
 
-    elif state == State.PLAY:
+class PlayScreen(Screen):
+    def __init__(self, app):
+        super().__init__(app)
+        self.app.set_game(Game(Player()))
+
+    def update(self):
+        super().update()
+
+        if self.app.get_game().player.lives < 0:
+            self.app.get_game().play_sound("over")
+            self.app.change_screen(GameOverScreen)
+
+    def draw(self):
+        super().draw()
         draw_status()
 
-    elif state == State.GAME_OVER:
+class GameOverScreen(Screen):
+    def __init__(self, app):
+        super().__init__(app)
+
+    def update(self):
+        # Don't update self.game
+
+        if space_pressed():
+            # Switch to menu state, and create a new game object without a player
+            self.app.change_screen(MenuScreen)
+
+    def draw(self):
+        super().draw()
+
         draw_status()
         # Display "Game Over" image
         screen.blit("over", (0, 0))
+    
+
+class App:
+    def __init__(self):
+        self.change_screen(MenuScreen)
+
+    def update(self):
+        new_screen = self.screen.update()
+        if new_screen is not None:
+            self.screen = new_screen
+
+    def draw(self):
+        self.screen.draw()
+    
+    def change_screen(self, screen_constructor: Callable[Screen, App]):
+        self.screen = screen_constructor(self)
+    
+    def get_game(self):
+        return game
+
+    def set_game(self, new_game: Game):
+        global game
+        game = new_game
+
+
+def update():
+    global app
+    app.update()
+
+def draw():
+    global app
+    app.draw()
 
 # Set up sound system and start music
 try:
@@ -773,6 +829,7 @@ except:
     pass
 
 
+app = App()
 
 # Set the initial game state
 state = State.MENU
