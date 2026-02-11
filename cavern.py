@@ -75,6 +75,21 @@ def sign(x):
     # Returns -1 or 1 depending on whether number is positive or negative
     return -1 if x < 0 else 1
 
+
+class InputState:
+    def __init__(self):
+        self.jump_held: bool = False
+        self.fire_held: bool = False
+        self.update()
+    
+    def update(self):
+        self.jump_pressed = not self.jump_held and keyboard.up
+        self.fire_pressed = not self.fire_held and keyboard.space
+        self.left = keyboard.left
+        self.right = keyboard.right
+        self.jump_held = keyboard.up
+        self.fire_held = keyboard.space
+
 class CollideActor(Actor):
     def __init__(self, pos, anchor=ANCHOR_CENTRE):
         super().__init__("blank", pos, anchor)
@@ -789,11 +804,14 @@ class GameOverScreen(Screen):
 class App:
     def __init__(self):
         self.change_screen(MenuScreen)
+        self.input_state = InputState()
 
     def update(self):
+        self.input_state.update()
         new_screen = self.screen.update()
         if new_screen is not None:
             self.screen = new_screen
+
 
     def draw(self):
         self.screen.draw()
